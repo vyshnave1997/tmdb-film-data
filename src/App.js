@@ -19,8 +19,7 @@ import {
   Badge,
   Dropdown,
   Menu,
-  Modal,
-  Tabs
+  Modal
 } from 'antd';
 import { 
   SearchOutlined, 
@@ -35,16 +34,13 @@ import {
   DownOutlined,
   HomeOutlined,
   PlayCircleOutlined,
-  YoutubeOutlined,
-  LinkOutlined,
-  DesktopOutlined
+  YoutubeOutlined
 } from '@ant-design/icons';
 
 const { Search } = Input;
 const { Title, Text, Paragraph } = Typography;
 const { Header, Content } = Layout;
 const { Meta } = Card;
-const { TabPane } = Tabs;
 
 const MovieDatabaseApp = () => {
   const [items, setItems] = useState([]);
@@ -64,6 +60,7 @@ const MovieDatabaseApp = () => {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [contentType, setContentType] = useState('movie');
   const [streamingModalVisible, setStreamingModalVisible] = useState(false);
+  const [trailerModalVisible, setTrailerModalVisible] = useState(false);
   const [trailers, setTrailers] = useState([]);
   const [watchProviders, setWatchProviders] = useState(null);
 
@@ -358,11 +355,6 @@ const MovieDatabaseApp = () => {
     fetchContent('popular');
   };
 
-  // Open streaming modal
-  const openStreamingModal = () => {
-    setStreamingModalVisible(true);
-  };
-
   const ContentCard = ({ item }) => (
     <Card
       hoverable
@@ -408,236 +400,170 @@ const MovieDatabaseApp = () => {
   const StreamingModal = () => {
     const tmdbId = selectedItem?.id;
     const streamingUrl = `${STREAMING_BASE_URL}/${contentType}/${tmdbId}`;
-    const embedUrl = `${STREAMING_BASE_URL}/embed/${contentType}/${tmdbId}`;
 
     return (
       <Modal
-        title={`Watch: ${selectedItem?.title || selectedItem?.name}`}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Watch: {selectedItem?.title || selectedItem?.name}</span>
+            <Button 
+              type="link" 
+              icon={<GlobalOutlined />}
+              onClick={() => window.open(streamingUrl, '_blank')}
+            >
+              Open in new tab 
+            </Button>
+          </div>
+        }
         open={streamingModalVisible}
         onCancel={() => setStreamingModalVisible(false)}
-        width={900}
+        width="90vw"
+        style={{ top: 20 }}
+        bodyStyle={{ padding: 0, height: '100vh' }}
         footer={null}
       >
-        <Tabs defaultActiveKey="1">
-          {/* Option A: Official Trailers */}
-          <TabPane 
-            tab={
-              <span>
-                <YoutubeOutlined /> Official Trailers
-              </span>
-            } 
-            key="1"
-          >
-            {trailers.length > 0 ? (
-              <div>
-                {trailers.map((trailer, index) => (
-                  <div key={trailer.id} style={{ marginBottom: 16 }}>
-                    <Title level={5}>{trailer.name}</Title>
-                    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-                      <iframe
-                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                        src={`https://www.youtube.com/embed/${trailer.key}`}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={trailer.name}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Empty description="No trailers available" />
-            )}
-          </TabPane>
-
-          {/* Option B: Legal Streaming Providers */}
-          <TabPane 
-            tab={
-              <span>
-                <GlobalOutlined /> Where to Watch
-              </span>
-            } 
-            key="2"
-          >
-            {watchProviders && Object.keys(watchProviders).length > 0 ? (
-              <div>
-                <Alert
-                  message="Legal Streaming Options"
-                  description="These are official streaming platforms where you can watch this content legally."
-                  type="info"
-                  showIcon
-                  style={{ marginBottom: 16 }}
-                />
-                {Object.entries(watchProviders).slice(0, 5).map(([country, providers]) => (
-                  <div key={country} style={{ marginBottom: 24 }}>
-                    <Title level={5}>{country}</Title>
-                    {providers.flatrate && providers.flatrate.length > 0 && (
-                      <div style={{ marginBottom: 12 }}>
-                        <Text strong>Stream:</Text>
-                        <div style={{ marginTop: 8 }}>
-                          <Space wrap>
-                            {providers.flatrate.map(provider => (
-                              <Card 
-                                key={provider.provider_id}
-                                size="small"
-                                style={{ width: 100, textAlign: 'center' }}
-                                cover={
-                                  <img 
-                                    src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                                    alt={provider.provider_name}
-                                    style={{ width: '100%', borderRadius: 8 }}
-                                  />
-                                }
-                              >
-                                <Text style={{ fontSize: 10 }}>{provider.provider_name}</Text>
-                              </Card>
-                            ))}
-                          </Space>
-                        </div>
-                      </div>
-                    )}
-                    {providers.buy && providers.buy.length > 0 && (
-                      <div style={{ marginBottom: 12 }}>
-                        <Text strong>Buy:</Text>
-                        <div style={{ marginTop: 8 }}>
-                          <Space wrap>
-                            {providers.buy.map(provider => (
-                              <Card 
-                                key={provider.provider_id}
-                                size="small"
-                                style={{ width: 100, textAlign: 'center' }}
-                                cover={
-                                  <img 
-                                    src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                                    alt={provider.provider_name}
-                                    style={{ width: '100%', borderRadius: 8 }}
-                                  />
-                                }
-                              >
-                                <Text style={{ fontSize: 10 }}>{provider.provider_name}</Text>
-                              </Card>
-                            ))}
-                          </Space>
-                        </div>
-                      </div>
-                    )}
-                    {providers.rent && providers.rent.length > 0 && (
-                      <div>
-                        <Text strong>Rent:</Text>
-                        <div style={{ marginTop: 8 }}>
-                          <Space wrap>
-                            {providers.rent.map(provider => (
-                              <Card 
-                                key={provider.provider_id}
-                                size="small"
-                                style={{ width: 100, textAlign: 'center' }}
-                                cover={
-                                  <img 
-                                    src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                                    alt={provider.provider_name}
-                                    style={{ width: '100%', borderRadius: 8 }}
-                                  />
-                                }
-                              >
-                                <Text style={{ fontSize: 10 }}>{provider.provider_name}</Text>
-                              </Card>
-                            ))}
-                          </Space>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Empty description="No streaming providers found for your region" />
-            )}
-          </TabPane>
-
-          {/* Option C: External Streaming Link */}
-          <TabPane 
-            tab={
-              <span>
-                <LinkOutlined /> External Stream
-              </span>
-            } 
-            key="3"
-          >
-            <Alert
-              message="Third-Party Streaming"
-              description="This opens an external streaming service. Please ensure you have the legal right to access this content in your region."
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Button 
-                type="primary" 
-                icon={<PlayCircleOutlined />}
-                block
-                size="large"
-                onClick={() => window.open(streamingUrl, '_blank')}
-              >
-                Open in New Tab
-              </Button>
-              <Divider>OR</Divider>
-              <Text strong>Watch Embedded:</Text>
-              <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, marginTop: 8 }}>
-                <iframe
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', borderRadius: 8 }}
-                  src={embedUrl}
-                  allowFullScreen
-                  title="External Stream"
-                />
-              </div>
-            </Space>
-          </TabPane>
-        </Tabs>
+        {/* <Alert
+          message="Third-Party Streaming"
+          description="This content is loaded from an external streaming service. Please ensure you have the legal right to access this content in your region."
+          type="warning"
+          showIcon
+          style={{ margin: 16, marginBottom: 0 }}
+        /> */}
+        <iframe
+          style={{ 
+            width: '100%', 
+            height: 'calc(100% - 80px)', 
+            border: 'none',
+            display: 'block'
+          }}
+          src={streamingUrl}
+          allowFullScreen
+          title="External Stream"
+        />
       </Modal>
     );
   };
 
-  const ItemDetails = ({ item }) => (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
-      <Button 
-        type="primary" 
-        icon={<ArrowLeftOutlined />}
-        onClick={() => setView('list')}
-        style={{ marginBottom: 16 }}
+  const TrailerModal = () => {
+    const mainTrailer = trailers.length > 0 ? trailers[0] : null;
+
+    return (
+      <Modal
+        title={`Trailer: ${selectedItem?.title || selectedItem?.name}`}
+        open={trailerModalVisible}
+        onCancel={() => setTrailerModalVisible(false)}
+        width="90vw"
+        style={{ top: 20 }}
+        bodyStyle={{ padding: 16 }}
+        footer={null}
       >
-        Back to {contentType === 'movie' ? 'Movies' : 'TV Shows'}
-      </Button>
-      
-      <Card>
-        {item.backdrop_path && (
-          <div style={{ position: 'relative', marginBottom: 24 }}>
-            <Image
-              src={`${BACKDROP_BASE_URL}${item.backdrop_path}`}
-              alt={item.title || item.name}
-              width="100%"
-              height={300}
-              style={{ objectFit: 'cover', borderRadius: 8 }}
-            />
-            <div style={{
-              position: 'absolute',
-              bottom: 16,
-              left: 16,
-              color: 'white',
-              textShadow: '2px 2px 4px rgba(0,0,0,0.7)'
-            }}>
-              <Title level={1} style={{ color: 'white', margin: 0 }}>
-                {item.title || item.name}
-              </Title>
-              <Space>
-                <Rate disabled defaultValue={item.vote_average / 2} allowHalf />
-                <Text style={{ color: 'white' }}>
-                  {item.vote_average?.toFixed(1)} / 10
-                </Text>
-              </Space>
+        {mainTrailer ? (
+          <div>
+            <Title level={5}>{mainTrailer.name}</Title>
+            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+              <iframe
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                src={`https://www.youtube.com/embed/${mainTrailer.key}`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={mainTrailer.name}
+              />
             </div>
           </div>
+        ) : (
+          <Empty description="No trailers available" />
         )}
+      </Modal>
+    );
+  };
+
+  const ItemDetails = ({ item }) => {
+    const [showTrailer, setShowTrailer] = useState(false);
+    const mainTrailer = trailers.length > 0 ? trailers[0] : null;
+
+    return (
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
+        <Button 
+          type="primary" 
+          icon={<ArrowLeftOutlined />}
+          onClick={() => setView('list')}
+          style={{ marginBottom: 16 }}
+        >
+          Back to {contentType === 'movie' ? 'Movies' : 'TV Shows'}
+        </Button>
+        
+        <Card>
+          {item.backdrop_path && (
+            <div style={{ position: 'relative', marginBottom: 24 }}>
+              {showTrailer && mainTrailer ? (
+                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                  <iframe
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 8 }}
+                    src={`https://www.youtube.com/embed/${mainTrailer.key}?autoplay=1`}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={mainTrailer.name}
+                  />
+                  <Button
+                    style={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}
+                    onClick={() => setShowTrailer(false)}
+                  >
+                    Show Backdrop
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Image
+                    src={`${BACKDROP_BASE_URL}${item.backdrop_path}`}
+                    alt={item.title || item.name}
+                    width="100%"
+                    height={300}
+                    style={{ objectFit: 'cover', borderRadius: 8 }}
+                    preview={false}
+                  />
+                  {mainTrailer && (
+                    <Button
+                      type="primary"
+                      danger
+                      size="large"
+                      icon={<PlayCircleOutlined />}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        padding: '24px 48px',
+                        height: 'auto',
+                        fontSize: '18px'
+                      }}
+                      onClick={() => setShowTrailer(true)}
+                    >
+                      Play Trailer
+                    </Button>
+                  )}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 16,
+                    left: 16,
+                    color: 'white',
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.7)'
+                  }}>
+                    <Title level={1} style={{ color: 'white', margin: 0 }}>
+                      {item.title || item.name}
+                    </Title>
+                    <Space>
+                      <Rate disabled defaultValue={item.vote_average / 2} allowHalf />
+                      <Text style={{ color: 'white' }}>
+                        {item.vote_average?.toFixed(1)} / 10
+                      </Text>
+                    </Space>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         
         <Row gutter={24}>
           <Col xs={24} md={8}>
@@ -670,7 +596,7 @@ const MovieDatabaseApp = () => {
                 icon={<PlayCircleOutlined />}
                 size="large"
                 block
-                onClick={openStreamingModal}
+                onClick={() => setStreamingModalVisible(true)}
               >
                 Watch Now
               </Button>
@@ -679,11 +605,9 @@ const MovieDatabaseApp = () => {
                   icon={<YoutubeOutlined />}
                   size="large"
                   block
-                  onClick={() => {
-                    setStreamingModalVisible(true);
-                  }}
+                  onClick={() => setTrailerModalVisible(true)}
                 >
-                  View Trailers ({trailers.length})
+                  View Trailer
                 </Button>
               )}
             </Space>
@@ -806,6 +730,7 @@ const MovieDatabaseApp = () => {
       </Card>
     </div>
   );
+};
 
   // Create genre menu
   const genreMenu = (
@@ -842,6 +767,7 @@ const MovieDatabaseApp = () => {
           <Spin spinning={loading} size="large">
             <ItemDetails item={selectedItem} />
             <StreamingModal />
+            <TrailerModal />
           </Spin>
         </Content>
       </Layout>
