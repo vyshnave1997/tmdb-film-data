@@ -1,0 +1,161 @@
+// ContentCard.jsx
+import React from 'react';
+import { Card, Image, Typography, Tag } from 'antd';
+import { StarFilled, VideoCameraOutlined, CalendarOutlined, PlaySquareOutlined } from '@ant-design/icons';
+import { IMAGE_BASE_URL } from '../config';
+
+const { Meta } = Card;
+const { Text } = Typography;
+
+export const ContentCard = ({ item, contentType, onClick }) => {
+  // Determine if it's a movie or TV show
+  const isMovie = contentType === 'movie' || item.media_type === 'movie' || item.title;
+  const isTv = contentType === 'tv' || item.media_type === 'tv' || item.name;
+  
+  const getContentTypeTag = () => {
+    if (isMovie) {
+      return (
+        <Tag 
+          color="blue" 
+          icon={<VideoCameraOutlined />}
+          style={{ 
+            fontSize: '10px', 
+            fontWeight: 'bold', 
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+            padding: '2px 6px'
+          }}
+        >
+          MOVIE
+        </Tag>
+      );
+    } else if (isTv) {
+      return (
+        <Tag 
+          color="purple" 
+          icon={<PlaySquareOutlined />}
+          style={{ 
+            fontSize: '10px', 
+            fontWeight: 'bold', 
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+            padding: '2px 6px'
+          }}
+        >
+          TV SHOW
+        </Tag>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <Card
+      hoverable
+      style={{ marginBottom: 16, height: '100%' }}
+      bodyStyle={{ padding: '8px 12px' }}
+      cover={
+        <div style={{ position: 'relative', width: '100%', paddingBottom: '150%', overflow: 'hidden' }}>
+          {item.poster_path ? (
+            <img
+              alt={item.title || item.name}
+              src={`${IMAGE_BASE_URL}${item.poster_path}`}
+              style={{ 
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover'
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = `
+                  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: #f5f5f5;">
+                    <svg width="48" height="48" fill="#d9d9d9" viewBox="64 64 896 896">
+                      <path d="M912 302.3L784 376V224c0-35.3-28.7-64-64-64H128c-35.3 0-64 28.7-64 64v352c0 35.3 28.7 64 64 64h592c35.3 0 64-28.7 64-64V424l128 73.7c21.3 12.3 48-3.1 48-27.6V330c0-24.6-26.7-40-48-27.7zM712 576H128V224h584v352z"/>
+                    </svg>
+                  </div>
+                `;
+              }}
+            />
+          ) : (
+            <div style={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              backgroundColor: '#f5f5f5' 
+            }}>
+              <VideoCameraOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
+            </div>
+          )}
+          
+          {/* Content Type Tag - Top Right */}
+          <div style={{ 
+            position: 'absolute', 
+            top: 6, 
+            right: 6,
+            zIndex: 2
+          }}>
+            {getContentTypeTag()}
+          </div>
+
+          {/* Rating Badge - Top Left */}
+          {item.vote_average > 0 && (
+            <div style={{ 
+              position: 'absolute', 
+              top: 6, 
+              left: 6, 
+              background: 'rgba(0, 0, 0, 0.75)',
+              padding: '3px 6px',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              zIndex: 2
+            }}>
+              <StarFilled style={{ color: '#fadb14', fontSize: '12px' }} />
+              <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold' }}>
+                {item.vote_average.toFixed(1)}
+              </span>
+            </div>
+          )}
+        </div>
+      }
+      onClick={onClick}
+    >
+      <Meta
+        title={
+          <div style={{ 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap',
+            fontSize: '13px',
+            fontWeight: 600,
+            marginBottom: 4,
+            lineHeight: '1.3'
+          }}>
+            {item.title || item.name}
+          </div>
+        }
+        description={
+          <Text type="secondary" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <CalendarOutlined style={{ fontSize: '11px' }} /> 
+            {item.release_date || item.first_air_date || 'N/A'}
+          </Text>
+        }
+      />
+    </Card>
+  );
+};
+
+export default ContentCard;
