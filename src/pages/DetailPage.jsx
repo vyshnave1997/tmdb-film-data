@@ -28,6 +28,7 @@ const DetailPage = () => {
   const [selectedEpisode, setSelectedEpisode] = useState(null);
   const [expandedSeasons, setExpandedSeasons] = useState([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [autoPlayTrailer, setAutoPlayTrailer] = useState(false);
 
   const fetchGenres = async (contentTypeParam = 'movie') => {
     try {
@@ -131,6 +132,16 @@ const DetailPage = () => {
       fetchItemDetails(id, type);
       fetchGenres(type);
       fetchCountries();
+      
+      // Reset autoplay state
+      setAutoPlayTrailer(false);
+      
+      // Auto-play trailer after 5 seconds
+      const timer = setTimeout(() => {
+        setAutoPlayTrailer(true);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
   }, [id, type]);
 
@@ -210,6 +221,28 @@ const DetailPage = () => {
       streamingUrl = '';
     }
 
+    // Calculate modal body height for movies on mobile
+    const getModalBodyStyle = () => {
+      if (isMobile && contentType === 'movie') {
+        // 65% of viewport height
+        return {
+          padding: 0,
+          height: '65vh',
+          maxHeight: '65vh'
+        };
+      }
+      if (isMobile && contentType === 'tv') {
+        return {
+          padding: 0,
+          height: '100vh'
+        };
+      }
+      return {
+        padding: 0,
+        height: '80vh'
+      };
+    };
+
     return (
       <Modal
         title={
@@ -239,11 +272,19 @@ const DetailPage = () => {
           setExpandedSeasons([]);
         }}
         width={isMobile ? "100vw" : "90vw"}
-        style={{ top: isMobile ? 0 : 20, padding: isMobile ? 0 : undefined }}
-        bodyStyle={{ padding: 0, height: isMobile ? '100vh' : '80vh' }}
+        style={{ 
+          top: isMobile ? 0 : 20, 
+          padding: isMobile ? 0 : undefined,
+          maxWidth: isMobile ? '100vw' : undefined
+        }}
+        bodyStyle={getModalBodyStyle()}
         footer={null}
       >
-        <div style={{ display: 'flex', height: '100%', flexDirection: isMobile ? 'column' : 'row' }}>
+        <div style={{ 
+          display: 'flex', 
+          height: '100%', 
+          flexDirection: isMobile ? 'column' : 'row' 
+        }}>
           {/* Season and Episode Selector - Left Side or Top on Mobile */}
           {contentType === 'tv' && seasons.length > 0 && (
             <div style={{ 
@@ -366,7 +407,11 @@ const DetailPage = () => {
           )}
 
           {/* Video Player - Right Side or Bottom on Mobile */}
-          <div style={{ flex: 1, position: 'relative', height: isMobile ? '60%' : 'auto' }}>
+          <div style={{ 
+            flex: 1, 
+            position: 'relative', 
+            height: isMobile ? (contentType === 'tv' ? '60%' : '100%') : 'auto'
+          }}>
             {streamingUrl ? (
               <iframe
                 style={{ 
@@ -504,6 +549,7 @@ const DetailPage = () => {
           onWatchClick={handleWatchClick}
           onTrailerClick={() => setTrailerModalVisible(true)}
           onEpisodeSelect={handleEpisodeSelect}
+          autoPlayTrailer={autoPlayTrailer}
         />
         <StreamingModal />
         <TrailerModal />

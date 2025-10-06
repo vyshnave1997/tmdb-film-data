@@ -46,35 +46,51 @@ export const FilterBar = ({
         scrollbarWidth: 'none',
         msOverflowStyle: 'none'
       }}>
-        <Space size={8} style={{ display: 'flex', flexWrap: 'nowrap' }}>
+        <Space size={6} style={{ display: 'flex', flexWrap: 'nowrap' }}>
           <Tag 
             color={contentType === 'movie' ? 'blue' : 'green'} 
             style={{ 
-              fontSize: '12px', 
-              padding: '4px 10px',
+              fontSize: '14px', 
+              padding: '6px 12px',
               whiteSpace: 'nowrap',
-              margin: 0
+              margin: 0,
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center'
             }}
           >
             {contentType === 'movie' ? 'Movies' : 'TV Shows'}
           </Tag>
           
           <Button
-            size="small"
+            size="middle"
             type={currentEndpoint === 'popular' ? 'primary' : 'default'}
             onClick={() => onCategoryChange('popular')}
-            style={{ whiteSpace: 'nowrap' }}
+            style={{ 
+              whiteSpace: 'nowrap',
+              height: '36px',
+              fontSize: '14px',
+              padding: '0 16px'
+            }}
           >
             Popular
           </Button>
           
           <Button
-            size="small"
+            size="middle"
             type={currentEndpoint === 'top_rated' ? 'primary' : 'default'}
             onClick={() => onCategoryChange('top_rated')}
-            style={currentEndpoint === 'top_rated' ? { whiteSpace: 'nowrap' } : { 
+            style={currentEndpoint === 'top_rated' ? { 
+              whiteSpace: 'nowrap',
+              height: '36px',
+              fontSize: '14px',
+              padding: '0 16px'
+            } : { 
               ...buttonStyle('top_rated', '#52c41a'),
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              height: '36px',
+              fontSize: '14px',
+              padding: '0 16px'
             }}
           >
             Top Rated
@@ -83,23 +99,36 @@ export const FilterBar = ({
           {contentType === 'movie' && (
             <>
               <Button
-                size="small"
+                size="middle"
                 type={currentEndpoint === 'upcoming' ? 'primary' : 'default'}
                 onClick={() => onCategoryChange('upcoming')}
-                style={currentEndpoint === 'upcoming' ? { whiteSpace: 'nowrap' } : {
+                style={currentEndpoint === 'upcoming' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : {
                   ...buttonStyle('upcoming', '#722ed1'),
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
                 }}
               >
                 Upcoming
               </Button>
               
               <Button
-                size="small"
+                size="middle"
                 type={currentEndpoint === 'now_playing' ? 'primary' : 'default'}
                 onClick={() => onCategoryChange('now_playing')}
                 danger={currentEndpoint !== 'now_playing'}
-                style={{ whiteSpace: 'nowrap' }}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
               >
                 Now Playing
               </Button>
@@ -109,23 +138,36 @@ export const FilterBar = ({
           {contentType === 'tv' && (
             <>
               <Button
-                size="small"
+                size="middle"
                 type={currentEndpoint === 'airing_today' ? 'primary' : 'default'}
                 onClick={() => onCategoryChange('airing_today')}
-                style={currentEndpoint === 'airing_today' ? { whiteSpace: 'nowrap' } : {
+                style={currentEndpoint === 'airing_today' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : {
                   ...buttonStyle('airing_today', '#722ed1'),
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
                 }}
               >
                 Airing Today
               </Button>
               
               <Button
-                size="small"
+                size="middle"
                 type={currentEndpoint === 'on_the_air' ? 'primary' : 'default'}
                 onClick={() => onCategoryChange('on_the_air')}
                 danger={currentEndpoint !== 'on_the_air'}
-                style={{ whiteSpace: 'nowrap' }}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
               >
                 On The Air
               </Button>

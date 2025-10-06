@@ -1,5 +1,5 @@
 // ContentCard.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Image, Typography, Tag } from 'antd';
 import { StarFilled, VideoCameraOutlined, CalendarOutlined, PlaySquareOutlined } from '@ant-design/icons';
 import { IMAGE_BASE_URL } from '../config';
@@ -8,6 +8,17 @@ const { Meta } = Card;
 const { Text } = Typography;
 
 export const ContentCard = ({ item, contentType, onClick }) => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Determine if it's a movie or TV show
   const isMovie = contentType === 'movie' || item.media_type === 'movie' || item.title;
   const isTv = contentType === 'tv' || item.media_type === 'tv' || item.name;
@@ -19,7 +30,7 @@ export const ContentCard = ({ item, contentType, onClick }) => {
           color="blue" 
           icon={<VideoCameraOutlined />}
           style={{ 
-            fontSize: '10px', 
+            fontSize: isMobile ? '9px' : '10px', 
             fontWeight: 'bold', 
             margin: 0,
             display: 'flex',
@@ -37,7 +48,7 @@ export const ContentCard = ({ item, contentType, onClick }) => {
           color="purple" 
           icon={<PlaySquareOutlined />}
           style={{ 
-            fontSize: '10px', 
+            fontSize: isMobile ? '9px' : '10px', 
             fontWeight: 'bold', 
             margin: 0,
             display: 'flex',
@@ -57,7 +68,7 @@ export const ContentCard = ({ item, contentType, onClick }) => {
     <Card
       hoverable
       style={{ marginBottom: 16, height: '100%' }}
-      bodyStyle={{ padding: '8px 12px' }}
+      bodyStyle={{ padding: isMobile ? '10px 12px' : '8px 12px' }}
       cover={
         <div style={{ position: 'relative', width: '100%', paddingBottom: '150%', overflow: 'hidden' }}>
           {item.poster_path ? (
@@ -116,15 +127,19 @@ export const ContentCard = ({ item, contentType, onClick }) => {
               top: 6, 
               left: 6, 
               background: 'rgba(0, 0, 0, 0.75)',
-              padding: '3px 6px',
+              padding: isMobile ? '4px 7px' : '3px 6px',
               borderRadius: '4px',
               display: 'flex',
               alignItems: 'center',
               gap: 3,
               zIndex: 2
             }}>
-              <StarFilled style={{ color: '#fadb14', fontSize: '12px' }} />
-              <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold' }}>
+              <StarFilled style={{ color: '#fadb14', fontSize: isMobile ? '13px' : '12px' }} />
+              <span style={{ 
+                color: 'white', 
+                fontSize: isMobile ? '12px' : '11px', 
+                fontWeight: 'bold' 
+              }}>
                 {item.vote_average.toFixed(1)}
               </span>
             </div>
@@ -139,17 +154,22 @@ export const ContentCard = ({ item, contentType, onClick }) => {
             overflow: 'hidden', 
             textOverflow: 'ellipsis', 
             whiteSpace: 'nowrap',
-            fontSize: '13px',
+            fontSize: isMobile ? '15px' : '13px',
             fontWeight: 600,
-            marginBottom: 4,
+            marginBottom: isMobile ? 6 : 4,
             lineHeight: '1.3'
           }}>
             {item.title || item.name}
           </div>
         }
         description={
-          <Text type="secondary" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <CalendarOutlined style={{ fontSize: '11px' }} /> 
+          <Text type="secondary" style={{ 
+            fontSize: isMobile ? '12px' : '11px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 3 
+          }}>
+            <CalendarOutlined style={{ fontSize: isMobile ? '12px' : '11px' }} /> 
             {item.release_date || item.first_air_date || 'N/A'}
           </Text>
         }
