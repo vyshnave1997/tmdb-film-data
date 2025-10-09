@@ -1,11 +1,14 @@
 // FilterBar.jsx
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Tag, Button, Space } from 'antd';
+import { Row, Col, Tag, Button, Space, Segmented } from 'antd';
+import { PlaySquareOutlined, VideoCameraOutlined } from '@ant-design/icons';
 
 export const FilterBar = ({ 
   contentType, 
   currentEndpoint, 
-  onCategoryChange 
+  onCategoryChange,
+  animeType = 'tv', // 'tv' or 'movie'
+  onAnimeTypeChange // callback for anime type change
 }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
 
@@ -28,6 +31,20 @@ export const FilterBar = ({
     };
   };
 
+  // Get display name for content type
+  const getContentTypeLabel = () => {
+    if (contentType === 'anime') return 'Anime';
+    if (contentType === 'movie') return 'Movies';
+    return 'TV Shows';
+  };
+
+  // Get tag color
+  const getTagColor = () => {
+    if (contentType === 'anime') return 'purple';
+    if (contentType === 'movie') return 'blue';
+    return 'green';
+  };
+
   // Mobile & Tablet View - Fixed Bottom with Horizontal Scroll
   if (isMobile) {
     return (
@@ -48,7 +65,7 @@ export const FilterBar = ({
       }}>
         <Space size={6} style={{ display: 'flex', flexWrap: 'nowrap' }}>
           <Tag 
-            color={contentType === 'movie' ? 'blue' : 'green'} 
+            color={getTagColor()} 
             style={{ 
               fontSize: '14px', 
               padding: '6px 12px',
@@ -59,45 +76,210 @@ export const FilterBar = ({
               alignItems: 'center'
             }}
           >
-            {contentType === 'movie' ? 'Movies' : 'TV Shows'}
+            {getContentTypeLabel()}
           </Tag>
+
+          {/* Anime Type Toggle for Mobile */}
+          {contentType === 'anime' && onAnimeTypeChange && (
+            <Segmented
+              options={[
+                { label: 'Series', value: 'tv', icon: <PlaySquareOutlined /> },
+                { label: 'Movies', value: 'movie', icon: <VideoCameraOutlined /> }
+              ]}
+              value={animeType}
+              onChange={onAnimeTypeChange}
+              style={{ 
+                height: '36px',
+                fontSize: '13px'
+              }}
+            />
+          )}
           
-          <Button
-            size="middle"
-            type={currentEndpoint === 'popular' ? 'primary' : 'default'}
-            onClick={() => onCategoryChange('popular')}
-            style={{ 
-              whiteSpace: 'nowrap',
-              height: '36px',
-              fontSize: '14px',
-              padding: '0 16px'
-            }}
-          >
-            Popular
-          </Button>
+          {/* Anime Specific Buttons - TV Series */}
+          {contentType === 'anime' && animeType === 'tv' && (
+            <>
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime')}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Popular
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime-top_rated' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime-top_rated')}
+                style={currentEndpoint === 'anime-top_rated' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : { 
+                  ...buttonStyle('anime-top_rated', '#52c41a'),
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Top Rated
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime-airing_today' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime-airing_today')}
+                style={currentEndpoint === 'anime-airing_today' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : {
+                  ...buttonStyle('anime-airing_today', '#722ed1'),
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Airing Today
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime-on_the_air' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime-on_the_air')}
+                danger={currentEndpoint !== 'anime-on_the_air'}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                On The Air
+              </Button>
+            </>
+          )}
+
+          {/* Anime Specific Buttons - Movies */}
+          {contentType === 'anime' && animeType === 'movie' && (
+            <>
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime-movie-popular' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime-movie-popular')}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Popular
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime-movie-top_rated' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime-movie-top_rated')}
+                style={currentEndpoint === 'anime-movie-top_rated' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : { 
+                  ...buttonStyle('anime-movie-top_rated', '#52c41a'),
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Top Rated
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime-movie-upcoming' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime-movie-upcoming')}
+                style={currentEndpoint === 'anime-movie-upcoming' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : {
+                  ...buttonStyle('anime-movie-upcoming', '#722ed1'),
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Upcoming
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'anime-movie-now_playing' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('anime-movie-now_playing')}
+                danger={currentEndpoint !== 'anime-movie-now_playing'}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Now Playing
+              </Button>
+            </>
+          )}
           
-          <Button
-            size="middle"
-            type={currentEndpoint === 'top_rated' ? 'primary' : 'default'}
-            onClick={() => onCategoryChange('top_rated')}
-            style={currentEndpoint === 'top_rated' ? { 
-              whiteSpace: 'nowrap',
-              height: '36px',
-              fontSize: '14px',
-              padding: '0 16px'
-            } : { 
-              ...buttonStyle('top_rated', '#52c41a'),
-              whiteSpace: 'nowrap',
-              height: '36px',
-              fontSize: '14px',
-              padding: '0 16px'
-            }}
-          >
-            Top Rated
-          </Button>
-          
+          {/* Movie Buttons */}
           {contentType === 'movie' && (
             <>
+              <Button
+                size="middle"
+                type={currentEndpoint === 'popular' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('popular')}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Popular
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'top_rated' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('top_rated')}
+                style={currentEndpoint === 'top_rated' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : { 
+                  ...buttonStyle('top_rated', '#52c41a'),
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Top Rated
+              </Button>
+              
               <Button
                 size="middle"
                 type={currentEndpoint === 'upcoming' ? 'primary' : 'default'}
@@ -135,8 +317,43 @@ export const FilterBar = ({
             </>
           )}
           
+          {/* TV Show Buttons */}
           {contentType === 'tv' && (
             <>
+              <Button
+                size="middle"
+                type={currentEndpoint === 'popular' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('popular')}
+                style={{ 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Popular
+              </Button>
+              
+              <Button
+                size="middle"
+                type={currentEndpoint === 'top_rated' ? 'primary' : 'default'}
+                onClick={() => onCategoryChange('top_rated')}
+                style={currentEndpoint === 'top_rated' ? { 
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                } : { 
+                  ...buttonStyle('top_rated', '#52c41a'),
+                  whiteSpace: 'nowrap',
+                  height: '36px',
+                  fontSize: '14px',
+                  padding: '0 16px'
+                }}
+              >
+                Top Rated
+              </Button>
+              
               <Button
                 size="middle"
                 type={currentEndpoint === 'airing_today' ? 'primary' : 'default'}
@@ -174,7 +391,7 @@ export const FilterBar = ({
             </>
           )}
         </Space>
-        <style jsx>{`
+        <style>{`
           div::-webkit-scrollbar {
             display: none;
           }
@@ -188,31 +405,129 @@ export const FilterBar = ({
     <Row gutter={8} style={{ marginBottom: 24 }} align="middle">
       <Col>
         <Tag 
-          color={contentType === 'movie' ? 'blue' : 'green'} 
+          color={getTagColor()} 
           style={{ fontSize: '14px', padding: '4px 12px' }}
         >
-          {contentType === 'movie' ? 'Movies' : 'TV Shows'}
+          {getContentTypeLabel()}
         </Tag>
       </Col>
-      <Col>
-        <Button
-          type={currentEndpoint === 'popular' ? 'primary' : 'default'}
-          onClick={() => onCategoryChange('popular')}
-        >
-          Popular
-        </Button>
-      </Col>
-      <Col>
-        <Button
-          type={currentEndpoint === 'top_rated' ? 'primary' : 'default'}
-          onClick={() => onCategoryChange('top_rated')}
-          style={buttonStyle('top_rated', '#52c41a')}
-        >
-          Top Rated
-        </Button>
-      </Col>
+
+      {/* Anime Type Toggle for Desktop */}
+      {contentType === 'anime' && onAnimeTypeChange && (
+        <Col>
+          <Segmented
+            options={[
+              { label: 'Series', value: 'tv', icon: <PlaySquareOutlined /> },
+              { label: 'Movies', value: 'movie', icon: <VideoCameraOutlined /> }
+            ]}
+            value={animeType}
+            onChange={onAnimeTypeChange}
+          />
+        </Col>
+      )}
+      
+      {/* Anime Specific Buttons - TV Series */}
+      {contentType === 'anime' && animeType === 'tv' && (
+        <>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime')}
+            >
+              Popular
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime-top_rated' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime-top_rated')}
+              style={buttonStyle('anime-top_rated', '#52c41a')}
+            >
+              Top Rated
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime-airing_today' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime-airing_today')}
+              style={buttonStyle('anime-airing_today', '#722ed1')}
+            >
+              Airing Today
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime-on_the_air' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime-on_the_air')}
+              danger={currentEndpoint !== 'anime-on_the_air'}
+            >
+              On The Air
+            </Button>
+          </Col>
+        </>
+      )}
+
+      {/* Anime Specific Buttons - Movies */}
+      {contentType === 'anime' && animeType === 'movie' && (
+        <>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime-movie-popular' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime-movie-popular')}
+            >
+              Popular
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime-movie-top_rated' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime-movie-top_rated')}
+              style={buttonStyle('anime-movie-top_rated', '#52c41a')}
+            >
+              Top Rated
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime-movie-upcoming' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime-movie-upcoming')}
+              style={buttonStyle('anime-movie-upcoming', '#722ed1')}
+            >
+              Upcoming
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'anime-movie-now_playing' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('anime-movie-now_playing')}
+              danger={currentEndpoint !== 'anime-movie-now_playing'}
+            >
+              Now Playing
+            </Button>
+          </Col>
+        </>
+      )}
+      
+      {/* Movie Buttons */}
       {contentType === 'movie' && (
         <>
+          <Col>
+            <Button
+              type={currentEndpoint === 'popular' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('popular')}
+            >
+              Popular
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'top_rated' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('top_rated')}
+              style={buttonStyle('top_rated', '#52c41a')}
+            >
+              Top Rated
+            </Button>
+          </Col>
           <Col>
             <Button
               type={currentEndpoint === 'upcoming' ? 'primary' : 'default'}
@@ -233,8 +548,27 @@ export const FilterBar = ({
           </Col>
         </>
       )}
+      
+      {/* TV Show Buttons */}
       {contentType === 'tv' && (
         <>
+          <Col>
+            <Button
+              type={currentEndpoint === 'popular' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('popular')}
+            >
+              Popular
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              type={currentEndpoint === 'top_rated' ? 'primary' : 'default'}
+              onClick={() => onCategoryChange('top_rated')}
+              style={buttonStyle('top_rated', '#52c41a')}
+            >
+              Top Rated
+            </Button>
+          </Col>
           <Col>
             <Button
               type={currentEndpoint === 'airing_today' ? 'primary' : 'default'}

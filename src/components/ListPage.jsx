@@ -24,11 +24,11 @@ export const ListPage = ({
 }) => {
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      <FilterBar 
+      {/* <FilterBar 
         contentType={contentType}
         currentEndpoint={currentEndpoint}
         onCategoryChange={onCategoryChange}
-      />
+      /> */}
 
       {error && (
         <Alert
