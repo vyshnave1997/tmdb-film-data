@@ -1,19 +1,28 @@
-
 // App.jsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import DetailPage from './pages/DetailPage';
+import MoviesPage from './pages/MoviesPage';
+import TVShowsPage from './pages/TVShowsPage';
+import AnimePage from './pages/AnimePage';
+import DetailPage from './pages/DetailPage'; // Make sure this import is correct
+import './App.css';
 
-const App = () => {
+function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/:type/:id" element={<DetailPage />} />
+        <Route path="/movies" element={<MoviesPage />} />
+        <Route path="/tv-shows" element={<TVShowsPage />} />
+        <Route path="/anime" element={<AnimePage />} />
+        <Route path="/detail/:type/:id" element={<DetailPage />} />
+        {/* Alternative routes if you prefer */}
+        <Route path="/movie/:id" element={<DetailPage />} />
+        <Route path="/tv/:id" element={<DetailPage />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
-};
+}
 
 export default App;

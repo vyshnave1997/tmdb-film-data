@@ -1,11 +1,12 @@
 // DetailPage.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Spin, Modal, Button, Typography, Empty, Select } from 'antd';
-import { GlobalOutlined, FullscreenOutlined } from '@ant-design/icons';
+import { Layout, Spin, Modal, Button, Typography, Empty, Select, Card, Row, Col, Badge } from 'antd';
+import { GlobalOutlined, FullscreenOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import Navbar from '../components/Navbar';
 import DetailsPage from '../components/DetailsPage';
-import { BASE_URL, API_KEY, STREAMING_SERVERS } from '../config';
+import RelatedContent from '../components/RelatedContent';
+import { BASE_URL, API_KEY, STREAMING_SERVERS, getBestServer, getServersByType } from '../config';
 
 const { Content } = Layout;
 const { Title } = Typography;
@@ -32,7 +33,9 @@ const DetailPage = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLandscape, setIsLandscape] = useState(window.innerHeight < window.innerWidth);
   const [autoPlayTrailer, setAutoPlayTrailer] = useState(false);
-  const [activeServer, setActiveServer] = useState(STREAMING_SERVERS[0]);
+  const [activeServer, setActiveServer] = useState(null);
+  const [relatedContent, setRelatedContent] = useState([]);
+  
 
   const fetchGenres = async (contentTypeParam = 'movie') => {
     try {
@@ -53,6 +56,38 @@ const DetailPage = () => {
       setCountries(data || []);
     } catch (err) {
       console.error('Error fetching countries:', err);
+    }
+  };
+
+  // Fetch related/similar content
+  const fetchRelatedContent = async (itemId, itemType) => {
+    try {
+      // Try recommendations first
+      let response = await fetch(
+        `${BASE_URL}/${itemType}/${itemId}/recommendations?api_key=${API_KEY}&language=en-US&page=1`
+      );
+      
+      let data = { results: [] };
+      if (response.ok) {
+        data = await response.json();
+      }
+
+      // If no recommendations, try similar content
+      if (!data.results || data.results.length === 0) {
+        response = await fetch(
+          `${BASE_URL}/${itemType}/${itemId}/similar?api_key=${API_KEY}&language=en-US&page=1`
+        );
+        if (response.ok) {
+          data = await response.json();
+        }
+      }
+
+      const related = data.results?.slice(0, 12) || [];
+      console.log('Related content fetched:', related.length, 'items'); // Debug log
+      setRelatedContent(related);
+    } catch (err) {
+      console.error('Error fetching related content:', err);
+      setRelatedContent([]);
     }
   };
 
@@ -113,6 +148,7 @@ const DetailPage = () => {
       });
 
       await fetchTrailers(itemId, itemType);
+      await fetchRelatedContent(itemId, itemType);
 
       if (itemType === 'tv' && itemData.seasons) {
         await fetchAllSeasons(itemId, itemData.seasons);
@@ -131,6 +167,9 @@ const DetailPage = () => {
       fetchItemDetails(id, type);
       fetchGenres(type);
       fetchCountries();
+      
+      // Auto-select best server for content type
+      setActiveServer(getBestServer(type));
 
       setAutoPlayTrailer(false);
       const timer = setTimeout(() => setAutoPlayTrailer(true), 5000);
@@ -138,7 +177,6 @@ const DetailPage = () => {
     }
   }, [id, type]);
 
-  // Prevent page refresh on orientation change
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
@@ -148,7 +186,6 @@ const DetailPage = () => {
       setIsLandscape(landscape);
     };
 
-    // Prevent orientation change from reloading
     const handleOrientationChange = (e) => {
       e.preventDefault();
       handleResize();
@@ -163,14 +200,66 @@ const DetailPage = () => {
     };
   }, []);
 
-  const handleBack = () => navigate('/');
+  // Smart back navigation based on content type
+  const handleBack = () => {
+    // Check if content type is anime (genre 16 is Animation)
+    const isAnime = selectedItem?.genres?.some(g => g.id === 16);
+    
+    if (type === 'movie') {
+      navigate('/movies');
+    } else if (type === 'tv') {
+      if (isAnime) {
+        navigate('/anime');
+      } else {
+        navigate('/tv-shows');
+      }
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleHomeClick = () => navigate('/');
-  const handleGenreSelect = () => navigate('/');
-  const handleCountrySelect = () => navigate('/');
-  const handleAnimeClick = () => navigate('/');
+  
+  const handleGenreSelect = (genreId) => {
+    // Navigate with genre filter
+    if (type === 'movie') {
+      navigate(`/movies?genre=${genreId}`);
+    } else if (type === 'tv') {
+      navigate(`/tv-shows?genre=${genreId}`);
+    } else {
+      navigate('/');
+    }
+  };
+  
+  const handleCountrySelect = (countryCode) => {
+    // Navigate with country filter
+    if (type === 'movie') {
+      navigate(`/movies?country=${countryCode}`);
+    } else if (type === 'tv') {
+      navigate(`/tv-shows?country=${countryCode}`);
+    } else {
+      navigate('/');
+    }
+  };
+  
+  const handleAnimeClick = () => navigate('/anime');
+  
   const handleContentTypeChange = (newType) => {
     setContentType(newType);
-    navigate('/');
+    if (newType === 'movie') {
+      navigate('/movies');
+    } else if (newType === 'tv') {
+      navigate('/tv-shows');
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleRelatedItemClick = (itemId) => {
+    // Navigate to the related item detail page
+    navigate(`/detail/${contentType}/${itemId}`);
+    // Scroll to top
+    window.scrollTo(0, 0);
   };
 
   const handleWatchClick = () => {
@@ -178,7 +267,6 @@ const DetailPage = () => {
       if (seasons.length > 0 && seasons[0].episodes && seasons[0].episodes.length > 0) {
         setSelectedSeason(seasons[0]);
         setSelectedEpisode(seasons[0].episodes[0]);
-        setExpandedSeasons([seasons[0].season_number]);
       }
       setStreamingModalVisible(true);
     } else {
@@ -189,7 +277,9 @@ const DetailPage = () => {
   const handleEpisodeSelect = (season, episode) => {
     setSelectedSeason(season);
     setSelectedEpisode(episode);
-    setStreamingModalVisible(true);
+    if (!streamingModalVisible) {
+      setStreamingModalVisible(true);
+    }
   };
 
   const toggleSeason = (seasonNumber) => {
@@ -200,26 +290,30 @@ const DetailPage = () => {
     );
   };
 
-  // Enhanced buildStreamUrl function
   const buildStreamUrl = (server, type, id, season, episode) => {
+    // Use custom URL builder if server has one
+    if (server.urlBuilder) {
+      return server.urlBuilder(type, id, season, episode);
+    }
+    
     const serverUrl = server.url;
     
     if (type === 'tv' && season && episode) {
-      // TV Show URL patterns
       if (serverUrl.includes('vidsrc.to')) {
+        return `${serverUrl}/tv/${id}/${season.season_number}/${episode.episode_number}`;
+      } else if (serverUrl.includes('vidsrc.me') || serverUrl.includes('vidsrc.xyz') || serverUrl.includes('vidsrc.pro')) {
         return `${serverUrl}/tv/${id}/${season.season_number}/${episode.episode_number}`;
       } else if (serverUrl.includes('moviesapi.club')) {
         return `${serverUrl}/tv/${id}-${season.season_number}-${episode.episode_number}`;
       } else if (serverUrl.includes('2embed.cc')) {
         return `${serverUrl}/tv/${id}?s=${season.season_number}&e=${episode.episode_number}`;
-      } else if (serverUrl.includes('vidsrc.me')) {
-        return `${serverUrl}/tv/${id}/${season.season_number}/${episode.episode_number}`;
       } else if (serverUrl.includes('smashystream')) {
         return `${serverUrl}/tv/${id}?s=${season.season_number}&e=${episode.episode_number}`;
+      } else if (serverUrl.includes('vidlink.pro')) {
+        return `${serverUrl}/tv/${id}/${season.season_number}/${episode.episode_number}`;
       }
       return `${serverUrl}/tv/${id}/${season.season_number}/${episode.episode_number}`;
     } else if (type === 'movie') {
-      // Movie URL patterns
       if (serverUrl.includes('2embed.cc')) {
         return `${serverUrl}/${id}`;
       }
@@ -228,7 +322,6 @@ const DetailPage = () => {
     return '';
   };
 
-  // Toggle fullscreen for iframe
   const handleFullscreen = () => {
     if (iframeRef.current) {
       if (iframeRef.current.requestFullscreen) {
@@ -243,10 +336,12 @@ const DetailPage = () => {
     }
   };
 
-  // Mobile-friendly Streaming Modal
   const StreamingModal = () => {
     const tmdbId = selectedItem?.id;
-    const streamingUrl = buildStreamUrl(activeServer, contentType, tmdbId, selectedSeason, selectedEpisode);
+    const streamingUrl = activeServer ? buildStreamUrl(activeServer, contentType, tmdbId, selectedSeason, selectedEpisode) : '';
+    
+    // Get available servers for current content type
+    const availableServers = getServersByType(contentType);
 
     const getModalStyle = () => {
       if (isMobile && isLandscape) {
@@ -269,21 +364,29 @@ const DetailPage = () => {
       }
       return {
         padding: 0,
-        height: isMobile ? '90vh' : '80vh'
+        height: isMobile ? '90vh' : '85vh',
+        overflow: 'hidden'
       };
     };
 
     const handleServerChange = (serverName) => {
-      const server = STREAMING_SERVERS.find(s => s.name === serverName);
+      const server = availableServers.find(s => s.name === serverName);
       if (server) {
         setActiveServer(server);
+      }
+    };
+
+    const handleSeasonChange = (seasonNumber) => {
+      const season = seasons.find(s => s.season_number === seasonNumber);
+      if (season && season.episodes && season.episodes.length > 0) {
+        setSelectedSeason(season);
+        setSelectedEpisode(season.episodes[0]);
       }
     };
 
     return (
       <Modal
         title={
-          // Hide title in landscape mobile mode for more screen space
           !(isMobile && isLandscape) && (
             <div style={{ 
               display: 'flex', 
@@ -318,18 +421,14 @@ const DetailPage = () => {
         open={streamingModalVisible}
         onCancel={() => {
           setStreamingModalVisible(false);
-          setSelectedSeason(null);
-          setSelectedEpisode(null);
-          setExpandedSeasons([]);
         }}
-        width={isMobile ? '100vw' : '90vw'}
+        width="100vw"
         style={getModalStyle()}
         bodyStyle={getModalBodyStyle()}
         footer={null}
         closeIcon={!(isMobile && isLandscape)}
         maskClosable={false}
       >
-        {/* Server Selector - Mobile Optimized */}
         {!(isMobile && isLandscape) && (
           <div style={{ 
             padding: isMobile ? '8px 12px' : '12px 16px', 
@@ -365,6 +464,35 @@ const DetailPage = () => {
                 </Option>
               ))}
             </Select>
+            
+            {/* Season Selector for TV Shows */}
+            {contentType === 'tv' && seasons.length > 0 && (
+              <>
+                <strong style={{ 
+                  whiteSpace: 'nowrap',
+                  fontSize: isMobile ? '13px' : '14px',
+                  marginLeft: isMobile ? 0 : '12px'
+                }}>
+                  Season:
+                </strong>
+                <Select
+                  value={selectedSeason?.season_number}
+                  onChange={handleSeasonChange}
+                  style={{ 
+                    minWidth: isMobile ? 100 : 120,
+                    maxWidth: isMobile ? '150px' : 'none'
+                  }}
+                  size={isMobile ? 'small' : 'middle'}
+                >
+                  {seasons.map((season) => (
+                    <Option key={season.season_number} value={season.season_number}>
+                      Season {season.season_number}
+                    </Option>
+                  ))}
+                </Select>
+              </>
+            )}
+            
             {isMobile && (
               <>
                 <Button
@@ -389,7 +517,6 @@ const DetailPage = () => {
           </div>
         )}
 
-        {/* Floating controls for landscape mode */}
         {isMobile && isLandscape && (
           <div style={{
             position: 'absolute',
@@ -424,41 +551,162 @@ const DetailPage = () => {
           </div>
         )}
 
-        {/* Video Player */}
         <div style={{ 
-          height: (isMobile && isLandscape) ? '100vh' : (isMobile ? 'calc(100% - 48px)' : 'calc(100% - 60px)')
+          display: 'flex',
+          height: (isMobile && isLandscape) ? '100vh' : (isMobile ? 'calc(100% - 48px)' : 'calc(100% - 60px)'),
+          overflow: 'hidden'
         }}>
-          {streamingUrl ? (
-            <iframe
-              ref={iframeRef}
-              key={streamingUrl}
-              src={streamingUrl}
-              allowFullScreen
-              title="External Stream"
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none'
-              }}
-            />
-          ) : (
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              height: '100%', 
-              color: '#999',
-              flexDirection: 'column',
-              padding: isMobile ? 16 : 20,
-              textAlign: 'center'
+          {/* Video Player */}
+          <div style={{ 
+            flex: contentType === 'tv' && selectedSeason ? (isMobile ? '1' : '2') : '1',
+            height: '100%'
+          }}>
+            {streamingUrl ? (
+              <iframe
+                ref={iframeRef}
+                key={streamingUrl}
+                src={streamingUrl}
+                allowFullScreen
+                title="External Stream"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none'
+                }}
+              />
+            ) : (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '100%', 
+                color: '#999',
+                flexDirection: 'column',
+                padding: isMobile ? 16 : 20,
+                textAlign: 'center'
+              }}>
+                <Empty description="Please select an episode to watch" />
+                <p style={{ marginTop: 10, fontSize: isMobile ? '13px' : '14px' }}>
+                  If the video doesn't load, try switching to another server
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Episode List for TV Shows */}
+          {contentType === 'tv' && selectedSeason && !isMobile && (
+            <div style={{
+              flex: '1',
+              overflowY: 'auto',
+              borderLeft: '1px solid #e8e8e8',
+              backgroundColor: '#fafafa',
+              padding: '16px'
             }}>
-              <Empty description="Please select an episode to watch" />
-              <p style={{ marginTop: 10, fontSize: isMobile ? '13px' : '14px' }}>
-                If the video doesn't load, try switching to another server
-              </p>
+              <Title level={5} style={{ marginBottom: '16px' }}>
+                Season {selectedSeason.season_number} Episodes
+              </Title>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {selectedSeason.episodes?.map((episode) => (
+                  <Card
+                    key={episode.episode_number}
+                    size="small"
+                    hoverable
+                    onClick={() => handleEpisodeSelect(selectedSeason, episode)}
+                    style={{
+                      cursor: 'pointer',
+                      border: selectedEpisode?.episode_number === episode.episode_number 
+                        ? '2px solid #1890ff' 
+                        : '1px solid #d9d9d9',
+                      backgroundColor: selectedEpisode?.episode_number === episode.episode_number 
+                        ? '#e6f7ff' 
+                        : 'white'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {episode.still_path && (
+                        <img
+                          src={`https://image.tmdb.org/t/p/w92${episode.still_path}`}
+                          alt={episode.name}
+                          style={{
+                            width: '80px',
+                            height: '45px',
+                            objectFit: 'cover',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          <Badge 
+                            count={episode.episode_number} 
+                            style={{ backgroundColor: '#1890ff', marginRight: '8px' }}
+                          />
+                          {episode.name}
+                        </div>
+                        {episode.runtime && (
+                          <div style={{ fontSize: '12px', color: '#666' }}>
+                            {episode.runtime} min
+                          </div>
+                        )}
+                      </div>
+                      {selectedEpisode?.episode_number === episode.episode_number && (
+                        <PlayCircleOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </div>
+
+        {/* Mobile Episode List - Bottom Sheet Style */}
+        {contentType === 'tv' && selectedSeason && isMobile && !(isMobile && isLandscape) && (
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            maxHeight: '40%',
+            overflowY: 'auto',
+            backgroundColor: 'white',
+            borderTop: '2px solid #e8e8e8',
+            padding: '12px',
+            boxShadow: '0 -2px 8px rgba(0,0,0,0.15)'
+          }}>
+            <Title level={5} style={{ marginBottom: '12px', fontSize: '14px' }}>
+              S{selectedSeason.season_number} Episodes
+            </Title>
+            <Row gutter={[8, 8]}>
+              {selectedSeason.episodes?.map((episode) => (
+                <Col span={12} key={episode.episode_number}>
+                  <Card
+                    size="small"
+                    hoverable
+                    onClick={() => handleEpisodeSelect(selectedSeason, episode)}
+                    style={{
+                      cursor: 'pointer',
+                      border: selectedEpisode?.episode_number === episode.episode_number 
+                        ? '2px solid #1890ff' 
+                        : '1px solid #d9d9d9',
+                      backgroundColor: selectedEpisode?.episode_number === episode.episode_number 
+                        ? '#e6f7ff' 
+                        : 'white'
+                    }}
+                    bodyStyle={{ padding: '8px' }}
+                  >
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>
+                      Ep {episode.episode_number}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {episode.name}
+                    </div>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          </div>
+        )}
       </Modal>
     );
   };
@@ -498,7 +746,7 @@ const DetailPage = () => {
 
   if (loading)
     return (
-      <Layout style={{ minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
+      <Layout style={{ minHeight: '100vh', backgroundColor: '#0f0f1e' }}>
         <Navbar
           contentType={contentType}
           setContentType={handleContentTypeChange}
@@ -519,7 +767,7 @@ const DetailPage = () => {
 
   if (error)
     return (
-      <Layout style={{ minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
+      <Layout style={{ minHeight: '100vh', backgroundColor: '#0f0f1e' }}>
         <Navbar
           contentType={contentType}
           setContentType={handleContentTypeChange}
@@ -541,7 +789,7 @@ const DetailPage = () => {
   if (!selectedItem) return null;
 
   return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
+    <Layout style={{ minHeight: '100vh', width: '100%', backgroundColor: '#0f0f1e' }}>
       <Navbar
         contentType={contentType}
         setContentType={handleContentTypeChange}
@@ -554,7 +802,7 @@ const DetailPage = () => {
         onCountrySelect={handleCountrySelect}
         onAnimeClick={handleAnimeClick}
       />
-      <Content>
+      <Content style={{ width: '100%', padding: 0 }}>
         <DetailsPage
           item={selectedItem}
           loading={loading}
@@ -567,6 +815,16 @@ const DetailPage = () => {
           onEpisodeSelect={handleEpisodeSelect}
           autoPlayTrailer={autoPlayTrailer}
         />
+        
+        {/* Related Content Section */}
+        {relatedContent && relatedContent.length > 0 && (
+          <RelatedContent
+            items={relatedContent}
+            contentType={contentType}
+            onItemClick={handleRelatedItemClick}
+          />
+        )}
+        
         <StreamingModal />
         <TrailerModal />
       </Content>
