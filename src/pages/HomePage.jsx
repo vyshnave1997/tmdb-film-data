@@ -1,8 +1,8 @@
 // HomePage.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Layout, Row, Col, Spin, Typography, Button, Carousel } from 'antd';
-import { ArrowRightOutlined, PlayCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Layout, Row, Col, Spin, Typography, Button, Carousel, Tag } from 'antd';
+import { ArrowRightOutlined, PlayCircleOutlined, InfoCircleOutlined, CloseOutlined, HistoryOutlined } from '@ant-design/icons';
 import Navbar from '../components/Navbar';
 import ContentCard from '../components/ContentCard';
 import { BASE_URL, API_KEY, BACKDROP_BASE_URL } from '../config';
@@ -12,14 +12,17 @@ const { Title, Paragraph } = Typography;
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [genres, setGenres] = useState([]);
   const [countries, setCountries] = useState([]);
   const [contentType, setContentType] = useState('movie');
   const [searchTerm, setSearchTerm] = useState('');
   
   const [heroItems, setHeroItems] = useState([]);
+  const [recentlyWatched, setRecentlyWatched] = useState([]);
   const [recentReleases, setRecentReleases] = useState([]);
-  const [recentReleasesPage, setRecentReleasesPage] = useState(1);
   const [recentReleasesVisible, setRecentReleasesVisible] = useState(16);
   const [popularMovies, setPopularMovies] = useState([]);
   const [popularMoviesVisible, setPopularMoviesVisible] = useState(16);
@@ -35,6 +38,69 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  
+  // Filter states
+  const [selectedGenre, setSelectedGenre] = useState(null);
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [filteredResults, setFilteredResults] = useState(null);
+
+  // Load recently watched from localStorage
+  const loadRecentlyWatched = async () => {
+    try {
+      const stored = localStorage.getItem('recentlyWatched');
+      if (stored) {
+        const watchedIds = JSON.parse(stored);
+        // Fetch details for each watched item
+        const watchedItems = await Promise.all(
+          watchedIds.slice(0, 12).map(async ({ id, type }) => {
+            try {
+              const response = await fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=en-US`);
+              if (response.ok) {
+                const data = await response.json();
+                return { ...data, media_type: type };
+              }
+            } catch (err) {
+              console.error('Error fetching watched item:', err);
+            }
+            return null;
+          })
+        );
+        setRecentlyWatched(watchedItems.filter(item => item !== null));
+      }
+    } catch (err) {
+      console.error('Error loading recently watched:', err);
+    }
+  };
+
+  // Clear recently watched
+  const clearRecentlyWatched = () => {
+    localStorage.removeItem('recentlyWatched');
+    setRecentlyWatched([]);
+  };
+
+  // Restore state from URL params on mount
+  useEffect(() => {
+    const query = searchParams.get('query');
+    const genre = searchParams.get('genre');
+    const country = searchParams.get('country');
+    const type = searchParams.get('type');
+    
+    if (type) {
+      setContentType(type);
+    }
+    
+    if (query) {
+      setSearchTerm(query);
+      handleGlobalSearch(query, type || contentType);
+    } else if (genre) {
+      const genreId = parseInt(genre);
+      setSelectedGenre(genreId);
+      fetchByGenre(genreId, type || contentType);
+    } else if (country) {
+      setSelectedCountry(country);
+      fetchByCountry(country, type || contentType);
+    }
+  }, []);
 
   const fetchGenres = async (type = 'movie') => {
     try {
@@ -55,6 +121,48 @@ const HomePage = () => {
       setCountries(data || []);
     } catch (err) {
       console.error('Error fetching countries:', err);
+    }
+  };
+
+  const fetchByGenre = async (genreId, type = 'movie') => {
+    setIsSearching(true);
+    try {
+      const endpoint = type === 'movie' ? 'movie' : 'tv';
+      const response = await fetch(
+        `${BASE_URL}/discover/${endpoint}?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&with_genres=${genreId}&page=1`
+      );
+      const data = await response.json();
+      setFilteredResults({
+        items: data.results || [],
+        type: type,
+        filterType: 'genre',
+        filterValue: genreId
+      });
+    } catch (err) {
+      console.error('Error fetching by genre:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const fetchByCountry = async (countryCode, type = 'movie') => {
+    setIsSearching(true);
+    try {
+      const endpoint = type === 'movie' ? 'movie' : 'tv';
+      const response = await fetch(
+        `${BASE_URL}/discover/${endpoint}?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&with_origin_country=${countryCode}&page=1`
+      );
+      const data = await response.json();
+      setFilteredResults({
+        items: data.results || [],
+        type: type,
+        filterType: 'country',
+        filterValue: countryCode
+      });
+    } catch (err) {
+      console.error('Error fetching by country:', err);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -188,51 +296,89 @@ const HomePage = () => {
   useEffect(() => {
     fetchGenres(contentType);
     fetchCountries();
+    loadRecentlyWatched();
     
-    const loadAllContent = async () => {
-      setLoading(true);
-      await Promise.all([
-        fetchHeroItems(),
-        fetchRecentReleases(),
-        fetchPopularMovies(),
-        fetchTopRatedMovies(),
-        fetchPopularTVShows(),
-        fetchAnimeShows(),
-        fetchUpcomingMovies(),
-        fetchUpcomingTV(),
-        fetchUpcomingAnime()
-      ]);
+    // Only load all content if there's no query/filter in URL
+    if (!searchParams.get('query') && !searchParams.get('genre') && !searchParams.get('country')) {
+      const loadAllContent = async () => {
+        setLoading(true);
+        await Promise.all([
+          fetchHeroItems(),
+          fetchRecentReleases(),
+          fetchPopularMovies(),
+          fetchTopRatedMovies(),
+          fetchPopularTVShows(),
+          fetchAnimeShows(),
+          fetchUpcomingMovies(),
+          fetchUpcomingTV(),
+          fetchUpcomingAnime()
+        ]);
+        setLoading(false);
+      };
+      
+      loadAllContent();
+    } else {
       setLoading(false);
-    };
-    
-    loadAllContent();
+    }
   }, []);
 
   const handleItemClick = (id, mediaType) => {
     const type = mediaType || 'movie';
-    navigate(`/detail/${type}/${id}`);
+    
+    // Build URL with current state
+    const params = new URLSearchParams();
+    if (searchTerm) params.set('query', searchTerm);
+    if (selectedGenre) params.set('genre', selectedGenre);
+    if (selectedCountry) params.set('country', selectedCountry);
+    if (contentType) params.set('type', contentType);
+    
+    const stateUrl = params.toString() ? `/?${params.toString()}` : '/';
+    
+    // Navigate to detail with state
+    navigate(`/detail/${type}/${id}`, { 
+      state: { 
+        from: stateUrl,
+        searchTerm,
+        selectedGenre,
+        selectedCountry,
+        contentType
+      } 
+    });
   };
 
   const handleGenreSelect = (genreId) => {
-    if (contentType === 'movie') {
-      navigate(`/movies?genre=${genreId}`);
-    } else {
-      navigate(`/tv-shows?genre=${genreId}`);
-    }
+    setSelectedGenre(genreId);
+    setSelectedCountry(null);
+    setSearchTerm('');
+    setSearchResults(null);
+    
+    // Update URL
+    setSearchParams({ genre: genreId, type: contentType });
+    
+    fetchByGenre(genreId, contentType);
   };
 
   const handleCountrySelect = (countryCode) => {
-    if (contentType === 'movie') {
-      navigate(`/movies?country=${countryCode}`);
-    } else {
-      navigate(`/tv-shows?country=${countryCode}`);
-    }
+    setSelectedCountry(countryCode);
+    setSelectedGenre(null);
+    setSearchTerm('');
+    setSearchResults(null);
+    
+    // Update URL
+    setSearchParams({ country: countryCode, type: contentType });
+    
+    fetchByCountry(countryCode, contentType);
   };
 
   const handleHomeClick = () => {
-    navigate('/');
     setSearchTerm('');
     setSearchResults(null);
+    setFilteredResults(null);
+    setSelectedGenre(null);
+    setSelectedCountry(null);
+    setSearchParams({});
+    navigate('/');
+    window.location.reload();
   };
 
   const handleAnimeClick = () => {
@@ -241,7 +387,17 @@ const HomePage = () => {
 
   const handleContentTypeChange = (newType) => {
     setContentType(newType);
-    if (newType === 'movie') {
+    
+    // If there's an active filter, re-fetch with new type
+    if (selectedGenre) {
+      fetchByGenre(selectedGenre, newType);
+      setSearchParams({ genre: selectedGenre, type: newType });
+    } else if (selectedCountry) {
+      fetchByCountry(selectedCountry, newType);
+      setSearchParams({ country: selectedCountry, type: newType });
+    } else if (searchTerm) {
+      handleGlobalSearch(searchTerm, newType);
+    } else if (newType === 'movie') {
       navigate('/movies');
     } else if (newType === 'tv') {
       navigate('/tv-shows');
@@ -251,9 +407,21 @@ const HomePage = () => {
   const handleGlobalSearch = async (query, searchType) => {
     if (!query.trim()) {
       setSearchResults(null);
+      setFilteredResults(null);
       setSearchTerm('');
+      setSelectedGenre(null);
+      setSelectedCountry(null);
+      setSearchParams({});
       return;
     }
+
+    setSearchTerm(query);
+    setSelectedGenre(null);
+    setSelectedCountry(null);
+    setFilteredResults(null);
+    
+    // Update URL
+    setSearchParams({ query, type: searchType || contentType });
 
     setIsSearching(true);
     setSearchResults({ movies: [], tvShows: [], people: [] });
@@ -284,6 +452,27 @@ const HomePage = () => {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSearchResults(null);
+    setFilteredResults(null);
+    setSelectedGenre(null);
+    setSelectedCountry(null);
+    setSearchParams({});
+  };
+
+  const getFilterLabel = () => {
+    if (selectedGenre) {
+      const genre = genres.find(g => g.id === selectedGenre);
+      return genre ? `Genre: ${genre.name}` : 'Genre Filter';
+    }
+    if (selectedCountry) {
+      const country = countries.find(c => c.iso_3166_1 === selectedCountry);
+      return country ? `Country: ${country.english_name}` : 'Country Filter';
+    }
+    return '';
   };
 
   const HeroSection = () => (
@@ -317,7 +506,7 @@ const HomePage = () => {
                   <Title level={window.innerWidth <= 768 ? 3 : 1} style={{ color: 'white', marginBottom: '16px' }}>
                     {item.title || item.name}
                   </Title>
-                  {!window.innerWidth <= 768 && (
+                  {window.innerWidth > 768 && (
                     <Paragraph style={{ 
                       color: 'white', 
                       fontSize: '16px', 
@@ -372,8 +561,6 @@ const HomePage = () => {
 
   const UpcomingBanner = ({ items, type, title }) => {
     if (!items || items.length === 0) return null;
-    
-    // Hide on mobile
     if (window.innerWidth <= 768) return null;
     
     return (
@@ -398,7 +585,6 @@ const HomePage = () => {
                   overflow: 'hidden',
                   backgroundColor: 'rgba(255,255,255,0.1)',
                   transition: 'transform 0.3s',
-                  ':hover': { transform: 'scale(1.05)' }
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -539,13 +725,66 @@ const HomePage = () => {
       />
 
       <Content style={{ padding: '24px', backgroundColor: '#f0f2f5' }}>
-        {!searchResults && <HeroSection />}
+        {!searchResults && !filteredResults && <HeroSection />}
         
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          {/* Active Filter Display */}
+          {(searchTerm || selectedGenre || selectedCountry) && (
+            <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {searchTerm && (
+                <Tag 
+                  closable 
+                  onClose={clearFilters}
+                  color="blue"
+                  style={{ fontSize: '14px', padding: '6px 12px' }}
+                >
+                  Search: "{searchTerm}"
+                </Tag>
+              )}
+              {selectedGenre && (
+                <Tag 
+                  closable 
+                  onClose={clearFilters}
+                  color="purple"
+                  style={{ fontSize: '14px', padding: '6px 12px' }}
+                >
+                  {getFilterLabel()}
+                </Tag>
+              )}
+              {selectedCountry && (
+                <Tag 
+                  closable 
+                  onClose={clearFilters}
+                  color="green"
+                  style={{ fontSize: '14px', padding: '6px 12px' }}
+                >
+                  {getFilterLabel()}
+                </Tag>
+              )}
+              <Button 
+                type="link" 
+                icon={<CloseOutlined />}
+                onClick={clearFilters}
+              >
+                Clear All
+              </Button>
+            </div>
+          )}
+
           {isSearching ? (
             <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <Spin size="large" tip="Searching..." />
             </div>
+          ) : filteredResults ? (
+            <ContentSection
+              title={`${getFilterLabel()} - ${filteredResults.items.length} Results`}
+              items={filteredResults.items}
+              onSeeMore={() => navigate(filteredResults.type === 'movie' ? '/movies' : '/tv-shows')}
+              type={filteredResults.type}
+              visibleCount={filteredResults.items.length}
+              onLoadMore={() => {}}
+              hideViewAll={true}
+            />
           ) : searchResults ? (
             <>
               {searchResults.movies.length > 0 && (
@@ -554,6 +793,9 @@ const HomePage = () => {
                   items={searchResults.movies}
                   onSeeMore={() => navigate('/movies')}
                   type="movie"
+                  visibleCount={searchResults.movies.length}
+                  onLoadMore={() => {}}
+                  hideViewAll={true}
                 />
               )}
               
@@ -563,6 +805,9 @@ const HomePage = () => {
                   items={searchResults.tvShows}
                   onSeeMore={() => navigate('/tv-shows')}
                   type="tv"
+                  visibleCount={searchResults.tvShows.length}
+                  onLoadMore={() => {}}
+                  hideViewAll={true}
                 />
               )}
 
@@ -616,10 +861,7 @@ const HomePage = () => {
                searchResults.people.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '80px 0' }}>
                   <Title level={4}>No results found for "{searchTerm}"</Title>
-                  <Button type="primary" onClick={() => {
-                    setSearchTerm('');
-                    setSearchResults(null);
-                  }}>
+                  <Button type="primary" onClick={clearFilters}>
                     Clear Search
                   </Button>
                 </div>
@@ -627,6 +869,109 @@ const HomePage = () => {
             </>
           ) : (
             <>
+              {/* Recently Watched Section */}
+              {recentlyWatched.length > 0 && (
+                <div style={{ marginBottom: '48px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: '24px'
+                  }}>
+                    <Title level={3} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <HistoryOutlined style={{ color: '#1890ff' }} />
+                      Continue Watching
+                    </Title>
+                    <Button 
+                      type="link" 
+                      danger
+                      onClick={clearRecentlyWatched}
+                    >
+                      Clear History
+                    </Button>
+                  </div>
+                  
+                  <div style={{
+                    padding: '20px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                  }}>
+                    <Row gutter={[16, 16]}>
+                      {recentlyWatched.map((item) => (
+                        <Col xs={12} sm={8} md={6} lg={6} xl={4} key={item.id}>
+                          <div
+                            onClick={() => handleItemClick(item.id, item.media_type)}
+                            style={{
+                              cursor: 'pointer',
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              backgroundColor: 'rgba(255,255,255,0.1)',
+                              transition: 'all 0.3s',
+                              border: '2px solid rgba(255,255,255,0.2)',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-8px)';
+                              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          >
+                            <div style={{ position: 'relative' }}>
+                              <img 
+                                src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
+                                alt={item.title || item.name}
+                                style={{ 
+                                  width: '100%', 
+                                  height: window.innerWidth <= 768 ? '200px' : '300px',
+                                  objectFit: 'cover' 
+                                }}
+                              />
+                              <div style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                backgroundColor: 'rgba(24, 144, 255, 0.9)',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 'bold'
+                              }}>
+                                <HistoryOutlined style={{ marginRight: '4px' }} />
+                                RECENT
+                              </div>
+                            </div>
+                            <div style={{ padding: '12px' }}>
+                              <div style={{ 
+                                fontWeight: 'bold', 
+                                fontSize: window.innerWidth <= 768 ? '12px' : '14px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                color: 'white'
+                              }}>
+                                {item.title || item.name}
+                              </div>
+                              <div style={{ 
+                                fontSize: window.innerWidth <= 768 ? '10px' : '12px', 
+                                opacity: 0.8, 
+                                marginTop: '4px',
+                                color: 'white'
+                              }}>
+                                {item.media_type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
+                              </div>
+                            </div>
+                          </div>
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                </div>
+              )}
+
               <ContentSection
                 title="Recent Releases"
                 items={recentReleases}

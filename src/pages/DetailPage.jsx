@@ -36,6 +36,28 @@ const DetailPage = () => {
   const [activeServer, setActiveServer] = useState(null);
   const [relatedContent, setRelatedContent] = useState([]);
   
+  // Save to recently watched in localStorage
+  const saveToRecentlyWatched = (itemId, itemType) => {
+    try {
+      // Get existing watched items
+      const stored = localStorage.getItem('recentlyWatched');
+      let watchedItems = stored ? JSON.parse(stored) : [];
+      
+      // Remove if already exists (to avoid duplicates)
+      watchedItems = watchedItems.filter(item => !(item.id === itemId && item.type === itemType));
+      
+      // Add to beginning of array
+      watchedItems.unshift({ id: itemId, type: itemType, timestamp: Date.now() });
+      
+      // Keep only last 12 items
+      watchedItems = watchedItems.slice(0, 12);
+      
+      // Save back to localStorage
+      localStorage.setItem('recentlyWatched', JSON.stringify(watchedItems));
+    } catch (err) {
+      console.error('Error saving to recently watched:', err);
+    }
+  };
 
   const fetchGenres = async (contentTypeParam = 'movie') => {
     try {
@@ -176,6 +198,13 @@ const DetailPage = () => {
       return () => clearTimeout(timer);
     }
   }, [id, type]);
+
+  // Save to recently watched when item details are loaded
+  useEffect(() => {
+    if (id && type && selectedItem) {
+      saveToRecentlyWatched(id, type);
+    }
+  }, [id, type, selectedItem]);
 
   useEffect(() => {
     const handleResize = () => {
